@@ -1,5 +1,6 @@
 
-import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
 import {
   View,
   Text,
@@ -8,8 +9,26 @@ import {
   StatusBar,
   Pressable,
 } from 'react-native';
+import {
+  getIntents,
+  subscribeToIntents,
+} from '../../services/intent-store';
+import type { TransactionIntent } from '../../types/transaction';
 
 export default function HomeScreen() {
+  const [intents, setIntents] = useState<TransactionIntent[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const refresh = () => setIntents(getIntents());
+      refresh();
+      return subscribeToIntents(refresh);
+    }, [])
+  );
+
+  const count = (statuses: string[]) =>
+    intents.filter((item) => statuses.includes(item.status)).length;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -40,73 +59,58 @@ export default function HomeScreen() {
             <Text style={styles.statusText}>Not Connected</Text>
           </View>
           <Text style={styles.walletHint}>
-            Connect your wallet to manage transaction approvals.
+            Wallet integration is not available yet. No wallet is connected.
           </Text>
-          <Pressable
-            style={styles.connectButton}
-            onPress={() => alert('Wallet integration coming soon')}
-          >
-            <Text style={styles.connectText}>Connect Wallet</Text>
-          </Pressable>
         </View>
 
         <Text style={styles.sectionTitle}>Overview</Text>
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>00</Text>
+            <Text style={styles.statNumber}>
+              {count(['submitted', 'pending_approval'])}
+            </Text>
             <Text style={styles.statLabel}>Pending</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>00</Text>
+            <Text style={styles.statNumber}>{count(['approved'])}</Text>
             <Text style={styles.statLabel}>Approved</Text>
           </View>
         </View>
 
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>00</Text>
+            <Text style={styles.statNumber}>{count(['executed'])}</Text>
             <Text style={styles.statLabel}>Executed</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>00</Text>
-            <Text style={styles.statLabel}>Flagged</Text>
+            <Text style={styles.statNumber}>{count(['draft'])}</Text>
+            <Text style={styles.statLabel}>Local Drafts</Text>
           </View>
         </View>
 
         <Text style={styles.sectionTitle}>Quick Actions</Text>
 
-        <Pressable
-          style={styles.actionCard}
+        <ActionCard
+          icon="+"
+          title="Create Intent"
+          description="Start a secure payment request"
           onPress={() => router.push('/create-intent')}
-        >
-          <View style={styles.actionIcon}>
-            <Text style={styles.iconText}>+</Text>
-          </View>
-          <View style={styles.actionInfo}>
-            <Text style={styles.actionTitle}>Create Intent</Text>
-            <Text style={styles.actionDescription}>
-              Start a secure payment request
-            </Text>
-          </View>
-          <Text style={styles.arrow}>›</Text>
-        </Pressable>
+        />
 
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => alert('Approval Room coming soon')}
-        >
-          <View style={styles.actionIcon}>
-            <Text style={styles.iconText}>✓</Text>
-          </View>
-          <View style={styles.actionInfo}>
-            <Text style={styles.actionTitle}>Approvals</Text>
-            <Text style={styles.actionDescription}>
-              Review transaction approvals
-            </Text>
-          </View>
-          <Text style={styles.arrow}>›</Text>
-        </Pressable>
+        <ActionCard
+          icon="↗"
+          title="Transaction History"
+          description="View locally saved transaction intents"
+          onPress={() => router.push('/history')}
+        />
+
+        <ActionCard
+          icon="✓"
+          title="Approval Room"
+          description="View intents awaiting authorisation"
+          onPress={() => router.push('/approvals')}
+        />
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -115,6 +119,31 @@ export default function HomeScreen() {
         </View>
       </ScrollView>
     </View>
+  );
+}
+
+function ActionCard({
+  icon,
+  title,
+  description,
+  onPress,
+}: {
+  icon: string;
+  title: string;
+  description: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable style={styles.actionCard} onPress={onPress}>
+      <View style={styles.actionIcon}>
+        <Text style={styles.iconText}>{icon}</Text>
+      </View>
+      <View style={styles.actionInfo}>
+        <Text style={styles.actionTitle}>{title}</Text>
+        <Text style={styles.actionDescription}>{description}</Text>
+      </View>
+      <Text style={styles.arrow}>›</Text>
+    </Pressable>
   );
 }
 
@@ -209,18 +238,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 12,
     lineHeight: 19,
-  },
-  connectButton: {
-    backgroundColor: '#35B9C8',
-    borderRadius: 10,
-    padding: 13,
-    alignItems: 'center',
-    marginTop: 18,
-  },
-  connectText: {
-    color: '#081321',
-    fontWeight: 'bold',
-    fontSize: 14,
   },
   sectionTitle: {
     color: '#FFFFFF',

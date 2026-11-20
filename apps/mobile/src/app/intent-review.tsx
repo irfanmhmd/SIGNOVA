@@ -8,15 +8,33 @@ import {
   Pressable,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+import { getIntentById } from '../services/intent-store';
 
 export default function IntentReviewScreen() {
-  const { token, recipient, amount, expiry } =
-    useLocalSearchParams<{
-      token: string;
-      recipient: string;
-      amount: string;
-      expiry: string;
-    }>();
+  const params = useLocalSearchParams<{ id?: string | string[] }>();
+
+  const intentId = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id;
+
+  const intent = intentId ? getIntentById(intentId) : undefined;
+
+  if (!intent) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.heading}>Intent not found</Text>
+        <Text style={styles.subtitle}>
+          This draft may be unavailable. Create a new intent to continue.
+        </Text>
+        <Pressable
+          style={styles.button}
+          onPress={() => router.replace('/create-intent')}
+        >
+          <Text style={styles.buttonText}>Create Intent</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
@@ -33,37 +51,41 @@ export default function IntentReviewScreen() {
       <View style={styles.card}>
         <Text style={styles.smallLabel}>PAYMENT AMOUNT</Text>
         <Text style={styles.amount}>
-          {amount || '0'} {token || 'USDC'}
+          {intent.amount} {intent.token}
         </Text>
 
         <View style={styles.divider} />
 
         <Text style={styles.smallLabel}>TOKEN</Text>
-        <Text style={styles.value}>{token || 'USDC'}</Text>
+        <Text style={styles.value}>{intent.token}</Text>
 
         <Text style={styles.smallLabel}>RECIPIENT ADDRESS</Text>
         <Text selectable style={styles.address}>
-          {recipient || 'Not provided'}
+          {intent.recipient}
         </Text>
 
         <Text style={styles.smallLabel}>EXPIRY</Text>
-        <Text style={styles.value}>{expiry || '24'} hours</Text>
+        <Text style={styles.value}>
+          {intent.expiryHours} hours
+        </Text>
+
+        <Text style={styles.smallLabel}>INTENT STATUS</Text>
+        <Text style={styles.status}>DRAFT — NOT SUBMITTED</Text>
 
         <View style={styles.warning}>
           <Text style={styles.warningTitle}>Security reminder</Text>
           <Text style={styles.warningText}>
             Check the recipient and amount carefully.
-            This is a review preview only. No wallet signature
-            or blockchain transaction has been submitted.
+            No security inspection has been performed yet.
+            No wallet signature or blockchain transaction
+            has been submitted.
           </Text>
         </View>
       </View>
 
       <Pressable
         style={styles.button}
-        onPress={() =>
-          router.back()
-        }
+        onPress={() => router.back()}
       >
         <Text style={styles.buttonText}>Back to Edit</Text>
       </Pressable>
@@ -128,6 +150,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: 8,
     lineHeight: 21,
+  },
+  status: {
+    color: '#55D1DA',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 8,
   },
   divider: {
     height: 1,

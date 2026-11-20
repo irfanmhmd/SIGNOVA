@@ -10,47 +10,87 @@ import {
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
+import { saveIntent } from '../services/intent-store';
+import type { TransactionIntent } from '../types/transaction';
+
+function normalizeAddress(value: string): string {
+  return value
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200D\uFEFF\u00A0\s]/g, '')
+    .replace(/[×Хх]/g, 'x');
+}
+
+function isValidAddress(value: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(value);
+}
 
 export default function CreateIntentScreen() {
-  const [token, setToken] = useState('USDC');
+  const [token] = useState('USDC');
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [expiry, setExpiry] = useState('24');
 
   const handleContinue = () => {
-    if (!recipient.trim() || !amount.trim()) {
+    const cleanAddress = normalizeAddress(recipient);
+    const cleanAmount = amount.trim();
+    const cleanExpiry = expiry.trim();
+
+    if (!cleanAddress || !cleanAmount) {
       Alert.alert('Missing details', 'Please enter recipient and amount.');
       return;
     }
 
-    if (!/^0x[a-fA-F0-9]{40}$/.test(recipient.trim())) {
-      Alert.alert('Invalid address', 'Enter a valid Ethereum wallet address.');
+    if (!isValidAddress(cleanAddress)) {
+      Alert.alert(
+        'Invalid address',
+        `The address must start with 0x and contain exactly 40 hexadecimal characters after it. Current length: ${cleanAddress.startsWith('0x') ? cleanAddress.length - 2 : 'Invalid prefix'}.`,
+      );
       return;
     }
 
-    if (!/^\d+(\.\d+)?$/.test(amount) || Number(amount) <= 0) {
+    if (!/^\d+(\.\d+)?$/.test(cleanAmount) || Number(cleanAmount) <= 0) {
       Alert.alert('Invalid amount', 'Enter an amount greater than zero.');
       return;
     }
 
-    if (!/^\d+$/.test(expiry) || Number(expiry) <= 0) {
+    if (!/^\d+$/.test(cleanExpiry) || Number(cleanExpiry) <= 0) {
       Alert.alert('Invalid expiry', 'Enter a valid number of hours.');
       return;
     }
 
+    const now = new Date().toISOString();
+
+    const intent: TransactionIntent = {
+      id: `intent-${Date.now()}`,
+      token,
+      recipient: cleanAddress,
+      amount: cleanAmount,
+      expiryHours: Number(cleanExpiry),
+      status: 'draft',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    saveIntent(intent);
+
     router.push({
       pathname: '/intent-review',
       params: {
-        token,
-        recipient: recipient.trim(),
-        amount,
-        expiry,
+        id: intent.id,
+        token: intent.token,
+        recipient: intent.recipient,
+        amount: intent.amount,
+        expiry: String(intent.expiryHours),
       },
     });
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <Pressable onPress={() => router.back()}>
         <Text style={styles.back}>‹ Back to Dashboard</Text>
       </Pressable>
@@ -75,9 +115,11 @@ export default function CreateIntentScreen() {
           value={recipient}
           onChangeText={setRecipient}
           autoCapitalize="none"
+          autoCorrect={false}
+          spellCheck={false}
         />
 
-        <Text style={styles.fieldLabel}>AMOUNT</Text>
+        <Text style={styles.fieldLabel}>AMOUNT (USDC)</Text>
         <TextInput
           style={styles.input}
           placeholder="Enter amount"
@@ -117,7 +159,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#080F1E',
+  },
+  content: {
     padding: 20,
+    paddingBottom: 40,
   },
   back: {
     color: '#55C8D5',
@@ -202,3 +247,4 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 });
+
