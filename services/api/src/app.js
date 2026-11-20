@@ -7,6 +7,7 @@ const { corsOrigins } = require("./config/env");
 const healthRoutes = require("./routes/health.routes");
 const riskRoutes = require("./routes/risk.routes");
 const authRoutes = require("./routes/auth.routes");
+const intentRoutes = require("./routes/intent.routes");
 // Import error handlers
 const {
   notFoundHandler,
@@ -43,7 +44,7 @@ app.use("/risk", riskRoutes);
 // Authentication endpoints
 // POST /auth/register
 app.use("/auth", authRoutes);
-
+app.use("/intent", intentRoutes);
 // ==================================
 // ERROR HANDLING
 // ==================================

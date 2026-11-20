@@ -41,7 +41,7 @@ async function requireAuth(req, res, next) {
       id: data.user.id,
       email: data.user.email
     };
-
+    req.accessToken = token;
     next();
   } catch (error) {
     next(error);
