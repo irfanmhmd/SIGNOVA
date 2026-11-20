@@ -1,16 +1,20 @@
 
 const { createClient } = require("@supabase/supabase-js");
+require("dotenv").config();
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+const supabasePublishableKey =
+  process.env.SUPABASE_PUBLISHABLE_KEY;
 
-if (!supabaseUrl || !publishableKey) {
-  throw new Error("Supabase Auth configuration is missing");
+if (!supabaseUrl || !supabasePublishableKey) {
+  throw new Error(
+    "Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY"
+  );
 }
 
 const supabaseAuth = createClient(
   supabaseUrl,
-  publishableKey,
+  supabasePublishableKey,
   {
     auth: {
       autoRefreshToken: false,

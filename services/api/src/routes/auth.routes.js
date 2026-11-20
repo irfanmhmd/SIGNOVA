@@ -1,12 +1,18 @@
 
 const express = require("express");
+const requireAuth = require("../middleware/requireAuth");
 const { supabaseAuth } = require("../config/supabaseAuth");
 
 const router = express.Router();
 
+// POST /auth/register
 router.post("/register", async (req, res, next) => {
   try {
-    const { email, password, full_name: fullName } = req.body || {};
+    const {
+      email,
+      password,
+      full_name: fullName
+    } = req.body || {};
 
     if (
       typeof email !== "string" ||
@@ -18,19 +24,21 @@ router.post("/register", async (req, res, next) => {
       fullName.length > 100
     ) {
       return res.status(400).json({
-        error: "Valid email, password (8+ characters), and full name are required"
+        error:
+          "Valid email, password (8+ characters), and full name are required"
       });
     }
 
-    const { data, error } = await supabaseAuth.auth.signUp({
-      email: email.trim(),
-      password,
-      options: {
-        data: {
-          full_name: fullName.trim()
+    const { data, error } =
+      await supabaseAuth.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: fullName.trim()
+          }
         }
-      }
-    });
+      });
 
     if (error) {
       return res.status(400).json({
@@ -53,6 +61,7 @@ router.post("/register", async (req, res, next) => {
   }
 });
 
+// POST /auth/login
 router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
@@ -74,7 +83,7 @@ router.post("/login", async (req, res, next) => {
         password
       });
 
-    if (error) {
+    if (error || !data?.session || !data?.user) {
       return res.status(401).json({
         error: "Invalid credentials or unconfirmed email"
       });
@@ -92,6 +101,18 @@ router.post("/login", async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+// GET /auth/me
+// Protected route
+router.get("/me", requireAuth, (req, res) => {
+  return res.status(200).json({
+    success: true,
+    user: {
+      id: req.user.id,
+      email: req.user.email
+    }
+  });
 });
 
 module.exports = router;
