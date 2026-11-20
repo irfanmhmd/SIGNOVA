@@ -1,18 +1,33 @@
-
-import { NativeTabs } from 'expo-router/native-tabs';
+import { Tabs } from 'expo-router';
 
 export default function TabLayout() {
   return (
-    <NativeTabs>
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="house.fill" />
-      </NativeTabs.Trigger>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: {
+          backgroundColor: '#080F1E',
+          borderTopColor: '#24516A',
+        },
+        tabBarActiveTintColor: '#55D1DA',
+        tabBarInactiveTintColor: '#91A5B8',
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'Home',
+          tabBarLabel: 'Home',
+        }}
+      />
 
-      <NativeTabs.Trigger name="explore">
-        <NativeTabs.Trigger.Label>Explore</NativeTabs.Trigger.Label>
-        <NativeTabs.Trigger.Icon sf="safari" />
-      </NativeTabs.Trigger>
-    </NativeTabs>
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: 'Explore',
+          tabBarLabel: 'Explore',
+        }}
+      />
+    </Tabs>
   );
 }

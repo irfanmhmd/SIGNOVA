@@ -1,14 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { getIntentById } from '../services/intent-store';
+import { explainRisk, RiskExplanation } from '../services/api';
 
 export default function IntentReviewScreen() {
   const params = useLocalSearchParams<{ id?: string | string[] }>();
@@ -18,6 +21,27 @@ export default function IntentReviewScreen() {
     : params.id;
 
   const intent = intentId ? getIntentById(intentId) : undefined;
+
+  const [loading, setLoading] = useState(false);
+  const [explanation, setExplanation] =
+    useState<RiskExplanation | null>(null);
+
+  async function loadExampleRisk() {
+    setLoading(true);
+    setExplanation(null);
+
+    try {
+      const result = await explainRisk('UNLIMITED_APPROVAL');
+      setExplanation(result);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Request failed';
+
+      Alert.alert('Risk service error', message);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   if (!intent) {
     return (
@@ -71,23 +95,92 @@ export default function IntentReviewScreen() {
 
         <Text style={styles.smallLabel}>INTENT STATUS</Text>
         <Text style={styles.status}>DRAFT — NOT SUBMITTED</Text>
+      </View>
 
-        <View style={styles.warning}>
-          <Text style={styles.warningTitle}>Security reminder</Text>
-          <Text style={styles.warningText}>
-            Check the recipient and amount carefully.
-            No security inspection has been performed yet.
-            No wallet signature or blockchain transaction
-            has been submitted.
-          </Text>
-        </View>
+      <View style={styles.warning}>
+        <Text style={styles.warningTitle}>
+          Security inspection not performed
+        </Text>
+        <Text style={styles.warningText}>
+          The backend currently provides risk explanations,
+          but does not yet provide an endpoint to inspect
+          this transaction intent. No security decision
+          has been made about this transaction.
+        </Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>
+          Backend Risk Explanation
+        </Text>
+
+        <Text style={styles.subtitle}>
+          Test the explanation service using an example
+          unlimited-approval risk code. This is not a finding
+          detected in your transaction.
+        </Text>
+
+        <Pressable
+          style={[styles.button, loading && styles.disabled]}
+          onPress={loadExampleRisk}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#081321" />
+          ) : (
+            <Text style={styles.buttonText}>
+              LOAD EXAMPLE RISK EXPLANATION
+            </Text>
+          )}
+        </Pressable>
+
+        {explanation && (
+          <View style={styles.explanation}>
+            <Text style={styles.smallLabel}>EXAMPLE RISK CODE</Text>
+            <Text style={styles.value}>
+              {explanation.riskCode}
+            </Text>
+
+            <Text style={styles.smallLabel}>SEVERITY</Text>
+            <Text style={styles.severity}>
+              {explanation.severity.toUpperCase()}
+            </Text>
+
+            <Text style={styles.smallLabel}>RISK TITLE</Text>
+            <Text style={styles.value}>
+              {explanation.title}
+            </Text>
+
+            <Text style={styles.smallLabel}>EXPLANATION</Text>
+            <Text style={styles.bodyText}>
+              {explanation.explanation}
+            </Text>
+
+            <Text style={styles.smallLabel}>
+              RECOMMENDED ACTION
+            </Text>
+            <Text style={styles.bodyText}>
+              {explanation.recommendedAction}
+            </Text>
+
+            <Text style={styles.smallLabel}>SOURCE</Text>
+            <Text style={styles.value}>
+              {explanation.source}
+            </Text>
+
+            <Text style={styles.disclaimer}>
+              Example only — this risk has not been detected
+              in the transaction being reviewed.
+            </Text>
+          </View>
+        )}
       </View>
 
       <Pressable
-        style={styles.button}
+        style={styles.secondaryButton}
         onPress={() => router.back()}
       >
-        <Text style={styles.buttonText}>Back to Edit</Text>
+        <Text style={styles.secondaryButtonText}>Back to Edit</Text>
       </Pressable>
     </ScrollView>
   );
@@ -119,7 +212,8 @@ const styles = StyleSheet.create({
   subtitle: {
     color: '#9BAABD',
     marginTop: 8,
-    marginBottom: 25,
+    marginBottom: 20,
+    lineHeight: 20,
   },
   card: {
     backgroundColor: '#12253A',
@@ -127,6 +221,12 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
     borderColor: '#24516A',
+    marginBottom: 18,
+  },
+  sectionTitle: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    fontWeight: 'bold',
   },
   smallLabel: {
     color: '#91A5B8',
@@ -142,7 +242,7 @@ const styles = StyleSheet.create({
   },
   value: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     marginTop: 8,
   },
   address: {
@@ -163,17 +263,20 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   warning: {
-    backgroundColor: '#19384B',
-    padding: 14,
-    borderRadius: 10,
-    marginTop: 25,
+    backgroundColor: '#49331C',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: '#9A7136',
   },
   warningTitle: {
-    color: '#55D1DA',
+    color: '#FFD27A',
     fontWeight: 'bold',
+    fontSize: 15,
   },
   warningText: {
-    color: '#C0CCD8',
+    color: '#E6D6B9',
     fontSize: 12,
     lineHeight: 19,
     marginTop: 8,
@@ -183,11 +286,49 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 35,
+    marginTop: 15,
+  },
+  disabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#081321',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  explanation: {
+    marginTop: 15,
+    padding: 14,
+    backgroundColor: '#19384B',
+    borderRadius: 10,
+  },
+  severity: {
+    color: '#FFB86B',
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  bodyText: {
+    color: '#D2DFEA',
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 8,
+  },
+  disclaimer: {
+    color: '#FFD27A',
+    fontSize: 11,
+    marginTop: 18,
+    lineHeight: 17,
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#35B9C8',
+    padding: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 35,
+  },
+  secondaryButtonText: {
+    color: '#55D1DA',
     fontWeight: 'bold',
   },
 });
